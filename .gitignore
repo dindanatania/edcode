@@ -1,0 +1,69 @@
+# ==============================
+# Operating System Files
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.bak
+*.swp
+
+# ==============================
+# Environment & Secret Files
+# ==============================
+.env
+.env.local
+.env.*.local
+*.env
+!*.env.example
+!*.env.local.example
+
+# ==============================
+# Backend / Python
+# ==============================
+backend/venv/
+backend/env/
+backend/.venv/
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.db
+backend/*.db
+backend/*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ==============================
+# Frontend / Node / Next.js
+# ==============================
+frontend/node_modules/
+node_modules/
+frontend/.next/
+.next/
+frontend/out/
+out/
+frontend/build/
+frontend/.vercel/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ==============================
+# IDE & Editors
+# ==============================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
