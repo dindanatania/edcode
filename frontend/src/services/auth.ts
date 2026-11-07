@@ -34,8 +34,13 @@ export const authService = {
 
   getSavedUser(): User | null {
     if (typeof window === 'undefined') return null;
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr || userStr === 'undefined' || userStr === 'null') return null;
+      return JSON.parse(userStr);
+    } catch {
+      return null;
+    }
   },
 };
 

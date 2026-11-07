@@ -26,9 +26,6 @@ export default function CourseModuleDetailClient({ slug }: CourseModuleDetailCli
   const moduleName = isQueue ? 'queue' : 'stack';
   const moduleTitle = isQueue ? 'Queue' : 'Stack';
 
-  // State to track if mounted on client (prevents SSR hydration mismatch)
-  const [isMounted, setIsMounted] = useState(false);
-
   // Navigation & UI state
   const [activeSidebar, setActiveSidebar] = useState<'beranda' | 'modul' | 'leaderboard'>('modul');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -47,12 +44,11 @@ export default function CourseModuleDetailClient({ slug }: CourseModuleDetailCli
   });
 
   // Learning Progress State initialized safely with INITIAL_PROGRESS
-  const [progress, setProgress] = useState<LearningProgressState>(INITIAL_PROGRESS);
+  const [progress, setProgress] = useState<LearningProgressState>(() => {
+    try { return learningProgressService.getProgress(); } catch { return INITIAL_PROGRESS; }
+  });
 
   useEffect(() => {
-    setIsMounted(true);
-    setProgress(learningProgressService.getProgress());
-
     const updateProgress = () => {
       setProgress(learningProgressService.getProgress());
     };
@@ -71,18 +67,6 @@ export default function CourseModuleDetailClient({ slug }: CourseModuleDetailCli
       setToast((prev) => ({ ...prev, isOpen: false }));
     }, 4500);
   };
-
-  // SSR / Initial Client Hydration placeholder
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-[#edf4fa] flex items-center justify-center p-6 selection:bg-blue-100">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-3 border-indigo-600 border-t-transparent animate-spin" />
-          <span className="text-xs font-semibold text-slate-500">Memuat modul...</span>
-        </div>
-      </div>
-    );
-  }
 
   const isPretestDone = progress.pretestCompleted;
   const isStackDone = progress.stackLessonsCompleted.length >= 10;
@@ -192,7 +176,7 @@ export default function CourseModuleDetailClient({ slug }: CourseModuleDetailCli
   };
 
   // Helper untuk render ikon sesuai tahapan belajar
-  const renderStageIcon = (type: string, isFirst: boolean) => {
+  const renderStageIcon = (type: string) => {
     switch (type) {
       case 'concept':
         return (

@@ -168,7 +168,7 @@ export default function StudentProgressView({ progress, userName }: StudentProgr
           <div className="relative">
             <select
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as any)}
+              onChange={(e) => setTimeFilter(e.target.value as 'overall' | 'today' | 'week')}
               className="appearance-none bg-white border border-slate-200/90 hover:border-slate-300 text-xs font-semibold text-slate-700 py-1.5 pl-3.5 pr-8 rounded-full shadow-2xs transition focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
               <option value="overall">Keseluruhan</option>

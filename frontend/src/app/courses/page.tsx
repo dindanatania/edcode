@@ -14,11 +14,20 @@ import StudentProgressView from '@/components/learning/StudentProgressView';
 
 export default function CoursesStudentPortalPage() {
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user] = useState<User | null>(() => {
+    try { return authService.getSavedUser(); } catch { return null; }
+  });
   const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'progress'>('home');
   const [isPretestModalOpen, setIsPretestModalOpen] = useState(false);
-  const [progress, setProgress] = useState<LearningProgressState>(INITIAL_PROGRESS);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // 👈 State Tambahan untuk Menu Settings Popover & Theme
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
+
+  const [progress, setProgress] = useState<LearningProgressState>(() => {
+    try { return learningProgressService.getProgress(); } catch { return INITIAL_PROGRESS; }
+  });
   const [toast, setToast] = useState<{
     isOpen: boolean;
     variant: ToastVariant;
@@ -32,17 +41,10 @@ export default function CoursesStudentPortalPage() {
   });
 
   useEffect(() => {
-    setIsMounted(true);
-    const saved = authService.getSavedUser();
-    if (saved) {
-      setUser(saved);
-    }
-
     const updateState = () => {
       setProgress(learningProgressService.getProgress());
     };
 
-    updateState();
     window.addEventListener(PROGRESS_EVENT_NAME, updateState);
     return () => window.removeEventListener(PROGRESS_EVENT_NAME, updateState);
   }, []);
@@ -59,16 +61,16 @@ export default function CoursesStudentPortalPage() {
     }, 4500);
   };
 
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-3 border-blue-600 border-t-transparent animate-spin" />
-          <span className="text-xs font-semibold text-slate-500">Memuat portal pembelajaran...</span>
-        </div>
-      </div>
-    );
-  }
+  const handleLogout = () => {
+    try { authService.logout(); } catch { }
+    showToast('Berhasil keluar akun', 'info', 'Logout');
+    router.push('/login');
+  };
+
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    setThemeMode(mode);
+    showToast(`Mode tampilan diubah ke ${mode}`, 'info', 'Tema');
+  };
 
   const userName = user?.full_name || 'Siswa SMK PPLG';
   const userInitials = userName.slice(0, 2).toUpperCase();
@@ -102,8 +104,8 @@ export default function CoursesStudentPortalPage() {
 
   return (
     <div className="min-h-screen bg-[#fafbfc] flex font-sans text-zinc-800 antialiased selection:bg-blue-100">
-      
-      {/* Alert: Floating Elegant Card matching reference */}
+
+      {/* Alert Notification */}
       <ToastNotification
         isOpen={toast.isOpen}
         variant={toast.variant}
@@ -122,78 +124,239 @@ export default function CoursesStudentPortalPage() {
       />
 
       {/* ══════════════════════════════════════════════
-          LEFT SIDEBAR (Fixed / Sticky)
+          LEFT SIDEBAR (Collapsible & Fixed Height)
       ══════════════════════════════════════════════ */}
-      <aside className="w-56 shrink-0 bg-white border-r border-zinc-200/80 flex flex-col justify-between py-6 px-4 min-h-screen sticky top-0">
-        <div>
+      <aside
+        className={`shrink-0 bg-white border-r border-zinc-200/80 flex flex-col justify-between py-6 h-screen sticky top-0 transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-20 px-3 items-center' : 'w-56 px-4'
+        }`}
+      >
+        {/* Bagian Atas: Logo & Navigasi */}
+        <div className="w-full flex flex-col items-center">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 px-2 mb-8">
-            <Image
-              src="/EdcodeLogo.png"
-              alt="Edcode Logo"
-              width={140}
-              height={38}
-              className="h-8 w-auto object-contain"
-              priority
-            />
+          <Link
+            href="/"
+            className={`flex items-center gap-2.5 mb-8 w-full ${
+              isSidebarCollapsed ? 'justify-center px-0' : 'px-2'
+            }`}
+          >
+            {isSidebarCollapsed ? (
+              <Image
+                src="/icon.png"
+                alt="Edcode Icon"
+                width={36}
+                height={36}
+                className="h-9 w-9 object-contain"
+                priority
+              />
+            ) : (
+              <Image
+                src="/EdcodeLogo.png"
+                alt="Edcode Logo"
+                width={140}
+                height={38}
+                className="h-8 w-auto object-contain"
+                priority
+              />
+            )}
           </Link>
 
           {/* Navigation Menu */}
-          <nav className="flex flex-col gap-1 text-[15px] font-medium text-zinc-600">
+          <nav className="flex flex-col gap-1 text-[15px] font-medium text-zinc-600 w-full">
+            {/* 1. Beranda */}
             <button
               onClick={() => setActiveTab('home')}
-              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${activeTab === 'home'
-                ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                : 'hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
+              title={isSidebarCollapsed ? 'Beranda' : undefined}
+              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${
+                isSidebarCollapsed ? 'justify-center' : ''
+              } ${
+                activeTab === 'home'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold'
+                  : 'hover:bg-zinc-50 hover:text-zinc-900'
+              }`}
             >
-              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span>Beranda</span>
+              {!isSidebarCollapsed && <span>Beranda</span>}
             </button>
 
+            {/* 2. Leaderboard */}
             <button
               onClick={() => setActiveTab('stats')}
-              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${activeTab === 'stats'
-                ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                : 'hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
+              title={isSidebarCollapsed ? 'Leaderboard' : undefined}
+              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${
+                isSidebarCollapsed ? 'justify-center' : ''
+              } ${
+                activeTab === 'stats'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold'
+                  : 'hover:bg-zinc-50 hover:text-zinc-900'
+              }`}
             >
-              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span>Leaderboard</span>
+              {!isSidebarCollapsed && <span>Leaderboard</span>}
             </button>
 
+            {/* 3. Progress */}
             <button
               onClick={() => setActiveTab('progress')}
-              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${activeTab === 'progress'
-                ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                : 'hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
+              title={isSidebarCollapsed ? 'Progress' : undefined}
+              className={`flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition text-left ${
+                isSidebarCollapsed ? 'justify-center' : ''
+              } ${
+                activeTab === 'progress'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold'
+                  : 'hover:bg-zinc-50 hover:text-zinc-900'
+              }`}
             >
-              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
-              <span>Progress</span>
+              {!isSidebarCollapsed && <span>Progress</span>}
             </button>
           </nav>
         </div>
 
-        {/* Reset Progress Helper (For testing & re-taking) */}
-        <div className="pt-4 border-t border-zinc-100">
-          <button
-            onClick={() => {
-              if (confirm('Reset ulang data progres & pre-test untuk simulasi pengujian?')) {
-                learningProgressService.resetProgress();
-                showToast('Progres pembelajaran telah direset ke awal.');
-              }
-            }}
-            className="w-full text-left text-[11px] text-zinc-400 hover:text-rose-600 transition px-2 py-1 rounded"
+        {/* ══════════════════════════════════════════════
+            BAGIAN BAWAH SIDEBAR: PROFILE & HIDE BUTTON
+        ══════════════════════════════════════════════ */}
+        <div className="w-full pt-4 border-t border-zinc-100 flex flex-col gap-2 relative">
+          
+          {/* ── SETTINGS POPOVER MENU ── */}
+          {isSettingsOpen && (
+            <>
+              {/* Overlay pembatal saat klik di luar */}
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => setIsSettingsOpen(false)}
+              />
+
+              <div className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-2xl shadow-xl border border-zinc-100 p-2 z-30 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                {/* Header Menu */}
+                <div className="px-3 py-2 border-b border-zinc-100 mb-1">
+                  <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Pengaturan</p>
+                </div>
+
+                {/* Direct ke Landing Page */}
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl transition-colors"
+                >
+                  <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                  <span>Halaman Utama (Landing)</span>
+                </Link>
+
+                {/* Tema / Mode Tampilan */}
+                <div className="px-3 py-2">
+                  <p className="text-[11px] font-medium text-zinc-500 mb-1.5">Mode Tampilan</p>
+                  <div className="grid grid-cols-3 gap-1 bg-zinc-100 p-1 rounded-xl text-[11px]">
+                    <button
+                      onClick={() => handleThemeChange('light')}
+                      className={`py-1 rounded-lg font-medium transition ${
+                        themeMode === 'light' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
+                      }`}
+                    >
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('dark')}
+                      className={`py-1 rounded-lg font-medium transition ${
+                        themeMode === 'dark' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
+                      }`}
+                    >
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeChange('system')}
+                      className={`py-1 rounded-lg font-medium transition ${
+                        themeMode === 'system' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
+                      }`}
+                    >
+                      Default
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <div className="pt-1 border-t border-zinc-100 mt-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                  >
+                    <svg className="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Keluar Akun</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 1. PROFIL SISWA & IKON SETTINGS (Menggantikan Ikon Logout) */}
+          <div 
+            className={`flex items-center gap-3 p-2 rounded-xl bg-zinc-50 border border-zinc-100/80 transition-all ${
+              isSidebarCollapsed ? 'justify-center p-1.5 bg-transparent border-none' : ''
+            }`}
           >
-            🔄 Reset Simulasi Progres
-          </button>
+            {/* Avatar Inisial */}
+            <div 
+              title={isSidebarCollapsed ? userName : undefined}
+              className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0"
+            >
+              {userInitials}
+            </div>
+
+            {/* Nama & Role */}
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-zinc-800 truncate">{userName}</p>
+                <p className="text-[10px] text-zinc-400 truncate">Siswa SMK PPLG</p>
+              </div>
+            )}
+
+            {/* Tombol Settings (Roda Gigi) */}
+            {!isSidebarCollapsed && (
+              <button
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                title="Pengaturan & Akun"
+                className="p-1.5 text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/60 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 2. TOMBOL TOGGLE HIDE SIDEBAR (Ikon Lebih Kecil `w-4 h-4` & Di Kanan saat Expanded) */}
+          <div className="w-full flex items-center">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              title={isSidebarCollapsed ? 'Buka Menu Navigasi' : 'Sembunyikan Menu Navigasi'}
+              className={`p-1.5 rounded-lg text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center ${
+                isSidebarCollapsed ? 'mx-auto' : 'ml-auto'
+              }`}
+            >
+              {isSidebarCollapsed ? (
+                // Ikon Panah Ganda (>>) saat Collapsed (Posisi Tengah)
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              ) : (
+                // Ikon Panah Ganda (<<) Kecil saat Expanded (Posisi Kanan)
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              )}
+            </button>
+          </div>
+
         </div>
       </aside>
 
@@ -201,22 +364,9 @@ export default function CoursesStudentPortalPage() {
           MAIN CONTENT AREA
       ══════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header / Bar */}
-        <header className="h-16 px-8 flex items-center justify-end gap-6 bg-transparent">
-          {/* User Profile */}
-          <div className="flex items-center gap-2 cursor-pointer hover:opacity-90">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-400 flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
-              {userInitials}
-            </div>
-            <span className="text-xs font-semibold text-zinc-700 tracking-tight">
-              {userName}
-            </span>
-          </div>
-        </header>
+        <header className="h-10 px-8 flex items-center justify-end bg-transparent" />
 
-        {/* Dashboard Body */}
-        <main className="flex-1 px-8 lg:px-12 pt-6 sm:pt-10 lg:pt-12 pb-20 max-w-7xl w-full">
-          {/* Greeting (Only on Home Tab) */}
+        <main className="flex-1 px-8 lg:px-12 pt-4 sm:pt-6 pb-20 max-w-7xl w-full">
           {activeTab === 'home' && (
             <div className="mb-10">
               <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight">
@@ -225,15 +375,11 @@ export default function CoursesStudentPortalPage() {
             </div>
           )}
 
-          {/* ══════════════════════════════════════════════
-              TAB 1: BERANDA / HOME (MODUL GRID)
-          ══════════════════════════════════════════════ */}
+          {/* TAB 1: BERANDA */}
           {activeTab === 'home' && (
             <>
-              {/* ── PRETEST BANNER CARD ── */}
               {!isPretestDone && (
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-7 flex flex-col sm:flex-row items-center gap-8 max-w-xl mb-10">
-                  {/* Illustrated Map */}
                   <div className="w-36 h-28 shrink-0 relative flex items-center justify-center">
                     <svg viewBox="0 0 160 120" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M35 50 C20 40 25 20 40 18 C38 30 45 42 35 50 Z" fill="#1e293b" />
@@ -260,7 +406,6 @@ export default function CoursesStudentPortalPage() {
                     </svg>
                   </div>
 
-                  {/* Text & CTA */}
                   <div className="flex flex-col items-start gap-3.5">
                     <h2 className="text-slate-800 font-bold text-base sm:text-lg leading-snug">
                       Lakukan Pretest untuk<br />mengukur kemampuan awalmu!
@@ -275,19 +420,15 @@ export default function CoursesStudentPortalPage() {
                 </div>
               )}
 
-              {/* Modul Grid: Stack & Queue */}
+              {/* Modul Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-
-                {/* ── MODUL 1: STACK ── */}
+                {/* Modul Stack */}
                 <div
                   onClick={handleStackClick}
                   className={`bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden transition-all duration-300 flex flex-col group cursor-pointer h-full ${
-                    !isPretestDone
-                      ? 'grayscale opacity-60 hover:opacity-75'
-                      : 'hover:shadow-md'
+                    !isPretestDone ? 'grayscale opacity-60 hover:opacity-75' : 'hover:shadow-md'
                   }`}
                 >
-                  {/* Card Banner: StackLogo Fit Utuh 100% */}
                   <div className="relative w-full aspect-[1672/941] overflow-hidden bg-slate-100">
                     <Image
                       src="/StackLogo.png"
@@ -299,7 +440,6 @@ export default function CoursesStudentPortalPage() {
                     />
                   </div>
 
-                  {/* Card Content */}
                   <div className="p-6 flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="text-lg font-black text-zinc-900 group-hover:text-indigo-600 transition">
@@ -312,15 +452,9 @@ export default function CoursesStudentPortalPage() {
 
                     <div className="mt-6">
                       <div className="flex items-center justify-between text-xs text-zinc-500 font-medium mb-2.5">
-                        <span>
-                          <strong className="text-zinc-800 font-bold">{progress.stackScore}</strong> points
-                        </span>
-                        <span>
-                          <strong className="text-zinc-800 font-bold">{progress.stackLessonsCompleted.length}/10</strong> Modul
-                        </span>
+                        <span><strong className="text-zinc-800 font-bold">{progress.stackScore}</strong> points</span>
+                        <span><strong className="text-zinc-800 font-bold">{progress.stackLessonsCompleted.length}/10</strong> Modul</span>
                       </div>
-
-                      {/* Progress bar */}
                       <div className="relative w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
                         <div
                           className="absolute left-0 top-0 h-full bg-indigo-600 rounded-full transition-all duration-300"
@@ -331,16 +465,13 @@ export default function CoursesStudentPortalPage() {
                   </div>
                 </div>
 
-                {/* ── MODUL 2: QUEUE ── */}
+                {/* Modul Queue */}
                 <div
                   onClick={handleQueueClick}
                   className={`bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden transition-all duration-300 flex flex-col group cursor-pointer h-full ${
-                    !isPretestDone || !isStackDone
-                      ? 'grayscale opacity-60 hover:opacity-75'
-                      : 'hover:shadow-md'
+                    !isPretestDone || !isStackDone ? 'grayscale opacity-60 hover:opacity-75' : 'hover:shadow-md'
                   }`}
                 >
-                  {/* Card Banner: QueueLogo Fit Utuh 100% */}
                   <div className="relative w-full aspect-[1672/941] overflow-hidden bg-slate-100">
                     <Image
                       src="/QueueLogo.png"
@@ -352,7 +483,6 @@ export default function CoursesStudentPortalPage() {
                     />
                   </div>
 
-                  {/* Card Content */}
                   <div className="p-6 flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="text-lg font-black text-zinc-900 group-hover:text-indigo-600 transition">
@@ -365,15 +495,9 @@ export default function CoursesStudentPortalPage() {
 
                     <div className="mt-6">
                       <div className="flex items-center justify-between text-xs text-zinc-500 font-medium mb-2.5">
-                        <span>
-                          <strong className="text-zinc-800 font-bold">{progress.queueScore}</strong> points
-                        </span>
-                        <span>
-                          <strong className="text-zinc-800 font-bold">{progress.queueLessonsCompleted.length}/10</strong> Modul
-                        </span>
+                        <span><strong className="text-zinc-800 font-bold">{progress.queueScore}</strong> points</span>
+                        <span><strong className="text-zinc-800 font-bold">{progress.queueLessonsCompleted.length}/10</strong> Modul</span>
                       </div>
-
-                      {/* Progress bar */}
                       <div className="relative w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
                         <div
                           className="absolute left-0 top-0 h-full bg-indigo-600 rounded-full transition-all duration-300"
@@ -388,21 +512,15 @@ export default function CoursesStudentPortalPage() {
             </>
           )}
 
-          {/* ══════════════════════════════════════════════
-              TAB 2: PROGRESS (SESUAI GAMBAR REFERENSI USER)
-          ══════════════════════════════════════════════ */}
+          {/* TAB 2: PROGRESS */}
           {activeTab === 'progress' && (
             <StudentProgressView progress={progress} userName={userName} />
           )}
 
-          {/* ══════════════════════════════════════════════
-              TAB 3: LEADERBOARD / STATS
-          ══════════════════════════════════════════════ */}
+          {/* TAB 3: LEADERBOARD */}
           {activeTab === 'stats' && (
             <div className="bg-white rounded-2xl border border-slate-100/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-8 max-w-3xl text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-4">
-                🏆
-              </div>
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-4">🏆</div>
               <h3 className="text-lg font-bold text-slate-900 mb-1">Papan Peringkat Kelas SMK PPLG</h3>
               <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6">
                 Skor totalmu saat ini: <strong className="text-slate-800 font-bold">{progress.stackScore + progress.queueScore + (progress.pretestCompleted ? progress.pretestScore : 0)} Poin</strong>. Terus selesaikan tantangan untuk menempati posisi puncak!
@@ -419,4 +537,4 @@ export default function CoursesStudentPortalPage() {
       </div>
     </div>
   );
-}
+} 

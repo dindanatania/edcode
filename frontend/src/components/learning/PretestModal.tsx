@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PRETEST_QUESTIONS, learningProgressService } from '@/services/learningProgress';
 import { authService } from '@/services/auth';
 
@@ -15,14 +15,12 @@ export default function PretestModal({ isOpen, onClose, onSuccess }: PretestModa
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [resultScore, setResultScore] = useState<number | null>(null);
-  const [userName, setUserName] = useState<string>('Siswa');
-
-  useEffect(() => {
-    const user = authService.getSavedUser();
-    if (user?.full_name) {
-      setUserName(user.full_name);
-    }
-  }, []);
+  const [userName] = useState<string>(() => {
+    try {
+      const user = authService.getSavedUser();
+      return user?.full_name || 'Siswa';
+    } catch { return 'Siswa'; }
+  });
 
   if (!isOpen) return null;
 

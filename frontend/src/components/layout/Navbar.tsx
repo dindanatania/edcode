@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -13,14 +13,9 @@ interface NavbarProps {
 
 export default function Navbar({ variant = 'default' }: NavbarProps) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const saved = authService.getSavedUser();
-    if (saved) {
-      setUser(saved);
-    }
-  }, []);
+  const [user, setUser] = useState<User | null>(() => {
+    try { return authService.getSavedUser(); } catch { return null; }
+  });
 
   const handleLogout = () => {
     authService.logout();

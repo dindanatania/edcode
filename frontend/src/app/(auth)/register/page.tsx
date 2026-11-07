@@ -39,8 +39,8 @@ export default function RegisterPage() {
       } else {
         router.push('/student/my-courses');
       }
-    } catch (err: any) {
-      setError(err.message || 'Registrasi gagal. Coba lagi nanti.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registrasi gagal. Coba lagi nanti.');
     } finally {
       setLoading(false);
     }

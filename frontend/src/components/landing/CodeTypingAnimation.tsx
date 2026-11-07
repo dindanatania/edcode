@@ -1,51 +1,50 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Single simple line that types and resets
 const CODE = 'console.log("Hello, World!");';
 
 export default function CodeTypingAnimation() {
   const [displayed, setDisplayed] = useState('');
-  const [charIdx, setCharIdx] = useState(0);
-  const [deleting, setDeleting] = useState(false);
+  const stateRef = useRef({ text: '', isDeleting: false });
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!deleting) {
-      if (charIdx <= CODE.length) {
-        const t = setTimeout(() => {
-          setDisplayed(CODE.slice(0, charIdx));
-          setCharIdx((c) => c + 1);
-        }, 80);
-        return () => clearTimeout(t);
+    const tick = () => {
+      const s = stateRef.current;
+      if (!s.isDeleting) {
+        if (s.text.length < CODE.length) {
+          s.text = CODE.slice(0, s.text.length + 1);
+          setDisplayed(s.text);
+          timerRef.current = setTimeout(tick, 75);
+        } else {
+          s.isDeleting = true;
+          timerRef.current = setTimeout(tick, 1800);
+        }
       } else {
-        // Pause before deleting
-        const t = setTimeout(() => setDeleting(true), 1800);
-        return () => clearTimeout(t);
+        if (s.text.length > 0) {
+          s.text = CODE.slice(0, s.text.length - 1);
+          setDisplayed(s.text);
+          timerRef.current = setTimeout(tick, 35);
+        } else {
+          s.isDeleting = false;
+          timerRef.current = setTimeout(tick, 500);
+        }
       }
-    } else {
-      if (charIdx >= 0) {
-        const t = setTimeout(() => {
-          setDisplayed(CODE.slice(0, charIdx));
-          setCharIdx((c) => c - 1);
-        }, 40);
-        return () => clearTimeout(t);
-      } else {
-        // Reset
-        const t = setTimeout(() => {
-          setDeleting(false);
-          setCharIdx(0);
-        }, 500);
-        return () => clearTimeout(t);
-      }
-    }
-  }, [charIdx, deleting]);
+    };
+
+    timerRef.current = setTimeout(tick, 100);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Simple syntax highlight
   const highlighted = displayed
-    .replace(/(console)/g, '<span style="color:#79b8ff">$1</span>')
-    .replace(/(\.log)/g, '<span style="color:#b392f0">$1</span>')
-    .replace(/("Hello, World!")/g, '<span style="color:#9ecbff">$1</span>');
+    .replace(/(console)/g, "<span style='color:#79b8ff'>$1</span>")
+    .replace(/(\.log)/g, "<span style='color:#b392f0'>$1</span>")
+    .replace(/("[^"]*"?)/g, "<span style='color:#9ecbff'>$1</span>");
 
   return (
     <div

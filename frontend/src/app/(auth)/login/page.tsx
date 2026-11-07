@@ -28,8 +28,8 @@ export default function LoginPage() {
       } else {
         router.push('/student/my-courses');
       }
-    } catch (err: any) {
-      setError(err.message || 'Login gagal. Periksa kembali email dan kata sandi Anda.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login gagal. Periksa kembali email dan kata sandi Anda.');
     } finally {
       setLoading(false);
     }
